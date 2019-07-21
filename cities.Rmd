@@ -1,0 +1,124 @@
+---
+title: "July 2019 TWAU Shokunin"
+author: "Kevin Yeung"
+date: "21/07/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+I use the ```jpeg``` library to read in the RGB values of each image. The image is then divided into different regions. In each region, the RGB value of the centre 4x4 square is taken as a feature.
+
+For each city, its images are split into training and validation sets (80:20).
+
+```{r function-definitions}
+#install.packages("jpeg")
+library(jpeg)
+
+#getPixelValues <- function(pixels) {
+#  c(pixels[3:6,7:10], pixels[3:6,24:27], pixels[3:6,39:42], pixels[3:6,54:57],
+#    pixels[11:14,7:10], pixels[11:14,24:27], pixels[11:14,39:42], pixels[11:14,54:57],
+#    pixels[19:22,7:10], pixels[19:22,24:27], pixels[19:22,39:42], pixels[19:22,54:57],
+#    pixels[27:30,7:10], pixels[27:30,24:27], pixels[27:30,39:42], pixels[27:30,54:57])
+#}
+
+getPixelValues <- function(pixels) {
+  c(pixels[5,8], pixels[5,26], pixels[5,41], pixels[5,55],
+    pixels[12,8], pixels[12,26], pixels[12,41], pixels[12,55],
+    pixels[21,8], pixels[21,26], pixels[21,41], pixels[21,55],
+    pixels[29,8], pixels[29,26], pixels[29,41], pixels[29,55])
+}
+
+getR <- function(img) {
+  getPixelValues(img[,,1])
+}
+getG <- function(img) {
+  getPixelValues(img[,,2])
+}
+getB <- function(img) {
+  getPixelValues(img[,,3])
+}
+
+getImageFeatures <- function(label, img) {
+  r <- getR(img)
+  g <- getG(img)
+  b <- getB(img)
+  c(label, r,g,b)
+}
+
+extractAndLabelImages <- function(label) {
+  filenames <- list.files(paste("./data/train/", label, sep = ""), pattern = "*.jpg", full.names = TRUE)
+  accum <- c()
+  results <- lapply(filenames, function(f) {
+    img <- readJPEG(f)
+    
+    imgRgb <- getImageFeatures(label, img)
+    
+    accum <- as.data.frame(c(accum, imgRgb))
+  })
+  
+  results <- t(as.data.frame(results))
+  rownames(results) <- NULL
+  
+  results
+}
+
+splitTrainingAndValidationSets <- function(images) {
+  list(images[1:200,], images[201:10000,])
+}
+```
+
+```{r read-images}
+beijing <- extractAndLabelImages("Beijing")
+brisbane <- extractAndLabelImages("Brisbane")
+geneva <- extractAndLabelImages("Geneva")
+hongkong <- extractAndLabelImages("HongKong")
+luanda <- extractAndLabelImages("Luanda")
+melbourne <- extractAndLabelImages("Melbourne")
+seoul <- extractAndLabelImages("Seoul")
+singapore <- extractAndLabelImages("Singapore")
+sydney <- extractAndLabelImages("Sydney")
+zurich <- extractAndLabelImages("Zurich")
+
+beijing_train <- splitTrainingAndValidationSets(beijing)[[1]]
+beijing_valid <- splitTrainingAndValidationSets(beijing)[[2]]
+brisbane_train <- splitTrainingAndValidationSets(brisbane)[[1]]
+brisbane_valid <- splitTrainingAndValidationSets(brisbane)[[2]]
+geneva_train <- splitTrainingAndValidationSets(geneva)[[1]]
+geneva_valid <- splitTrainingAndValidationSets(geneva)[[2]]
+hongkong_train <- splitTrainingAndValidationSets(hongkong)[[1]]
+hongkong_valid <- splitTrainingAndValidationSets(hongkong)[[2]]
+luanda_train <- splitTrainingAndValidationSets(luanda)[[1]]
+luanda_valid <- splitTrainingAndValidationSets(luanda)[[2]]
+melbourne_train <- splitTrainingAndValidationSets(melbourne)[[1]]
+melbourne_valid <- splitTrainingAndValidationSets(melbourne)[[2]]
+seoul_train <- splitTrainingAndValidationSets(seoul)[[1]]
+seoul_valid <- splitTrainingAndValidationSets(seoul)[[2]]
+singapore_train <- splitTrainingAndValidationSets(singapore)[[1]]
+singapore_valid <- splitTrainingAndValidationSets(singapore)[[2]]
+sydney_train <- splitTrainingAndValidationSets(sydney)[[1]]
+sydney_valid <- splitTrainingAndValidationSets(sydney)[[2]]
+zurich_train <- splitTrainingAndValidationSets(zurich)[[1]]
+zurich_valid <- splitTrainingAndValidationSets(zurich)[[2]]
+
+training <- as.data.frame(rbind(beijing_train, brisbane_train, geneva_train, hongkong_train, luanda_train, melbourne_train, seoul_train, singapore_train, sydney_train, zurich_train))
+validation <- as.data.frame(rbind(beijing_valid, brisbane_valid, geneva_valid, hongkong_valid, luanda_valid, melbourne_valid, seoul_valid, singapore_valid, sydney_valid, zurich_valid))
+
+rm(beijing)
+rm(brisbane)
+rm(geneva)
+rm(hongkong)
+rm(luanda)
+rm(melbourne)
+rm(seoul)
+rm(singapore)
+rm(sydney)
+rm(zurich)
+
+model <- glm(V1 ~ ., family = binomial(), data = training, model = FALSE, y = FALSE)
+save(model, file = "shokunin.model")
+```
