@@ -17,21 +17,26 @@ For each city, its images are split into training and validation sets (80:20).
 
 ```{r function-definitions}
 #install.packages("jpeg")
+#install.packages("dplyr")
+#install.packages("party")
 library(jpeg)
-
-#getPixelValues <- function(pixels) {
-#  c(pixels[3:6,7:10], pixels[3:6,24:27], pixels[3:6,39:42], pixels[3:6,54:57],
-#    pixels[11:14,7:10], pixels[11:14,24:27], pixels[11:14,39:42], pixels[11:14,54:57],
-#    pixels[19:22,7:10], pixels[19:22,24:27], pixels[19:22,39:42], pixels[19:22,54:57],
-#    pixels[27:30,7:10], pixels[27:30,24:27], pixels[27:30,39:42], pixels[27:30,54:57])
-#}
+library(dplyr)
+library(party)
+library(randomForest)
 
 getPixelValues <- function(pixels) {
-  c(pixels[5,8], pixels[5,26], pixels[5,41], pixels[5,55],
-    pixels[12,8], pixels[12,26], pixels[12,41], pixels[12,55],
-    pixels[21,8], pixels[21,26], pixels[21,41], pixels[21,55],
-    pixels[29,8], pixels[29,26], pixels[29,41], pixels[29,55])
+  c(pixels[3:6,7:10], pixels[3:6,24:27], pixels[3:6,39:42], pixels[3:6,54:57],
+    pixels[11:14,7:10], pixels[11:14,24:27], pixels[11:14,39:42], pixels[11:14,54:57],
+    pixels[19:22,7:10], pixels[19:22,24:27], pixels[19:22,39:42], pixels[19:22,54:57],
+    pixels[27:30,7:10], pixels[27:30,24:27], pixels[27:30,39:42], pixels[27:30,54:57])
 }
+
+#getPixelValues <- function(pixels) {
+#  c(pixels[5,8], pixels[5,26], pixels[5,41], pixels[5,55],
+#    pixels[12,8], pixels[12,26], pixels[12,41], pixels[12,55],
+#    pixels[21,8], pixels[21,26], pixels[21,41], pixels[21,55],
+#    pixels[29,8], pixels[29,26], pixels[29,41], pixels[29,55])
+#}
 
 getR <- function(img) {
   getPixelValues(img[,,1])
@@ -47,28 +52,28 @@ getImageFeatures <- function(label, img) {
   r <- getR(img)
   g <- getG(img)
   b <- getB(img)
-  c(label, r,g,b)
+  df <- data.frame(t(c(r,g,b)))
+  cbind("city" = label, df)
 }
 
 extractAndLabelImages <- function(label) {
-  filenames <- list.files(paste("./data/train/", label, sep = ""), pattern = "*.jpg", full.names = TRUE)
-  accum <- c()
+  filenames <- list.files(paste("./synimg/train/", label, sep = ""), pattern = "*.jpg", full.names = TRUE)
+  
+  accum <- data.frame()
+  
   results <- lapply(filenames, function(f) {
     img <- readJPEG(f)
     
     imgRgb <- getImageFeatures(label, img)
     
-    accum <- as.data.frame(c(accum, imgRgb))
+    rbind(accum, imgRgb)
   })
-  
-  results <- t(as.data.frame(results))
-  rownames(results) <- NULL
-  
-  results
+
+  results <- bind_rows(results)
 }
 
 splitTrainingAndValidationSets <- function(images) {
-  list(images[1:200,], images[201:10000,])
+  list(images[1:3000,], images[3001:10000,])
 }
 ```
 
@@ -119,6 +124,26 @@ rm(singapore)
 rm(sydney)
 rm(zurich)
 
-model <- glm(V1 ~ ., family = binomial(), data = training, model = FALSE, y = FALSE)
-save(model, file = "shokunin.model")
+tree <- ctree(city ~ ., data = training)
+save(tree, file = "cities.tree.model")
+
+forest <- randomForest(city ~ ., data = training)
+save(forest, file = "cities.forest.model")
+```
+
+```{r validation}
+predict_cities <- function(method, model, data) {
+  p <- predict(model, data)
+  predicted <- cbind(p, data)
+
+  correct <- predicted[predicted$p == predicted$city, ]
+  print(paste(method, "% correct = ", nrow(correct) / nrow(predicted) * 100))
+}
+
+predict_cities("decision tree", tree, validation)
+predict_cities("random forest", forest, validation)
+```
+
+```{r predict}
+
 ```
