@@ -31,13 +31,6 @@ getPixelValues <- function(pixels) {
     pixels[27:30,7:10], pixels[27:30,24:27], pixels[27:30,39:42], pixels[27:30,54:57])
 }
 
-#getPixelValues <- function(pixels) {
-#  c(pixels[5,8], pixels[5,26], pixels[5,41], pixels[5,55],
-#    pixels[12,8], pixels[12,26], pixels[12,41], pixels[12,55],
-#    pixels[21,8], pixels[21,26], pixels[21,41], pixels[21,55],
-#    pixels[29,8], pixels[29,26], pixels[29,41], pixels[29,55])
-#}
-
 getR <- function(img) {
   getPixelValues(img[,,1])
 }
@@ -78,51 +71,19 @@ splitTrainingAndValidationSets <- function(images) {
 ```
 
 ```{r read-images}
-beijing <- extractAndLabelImages("Beijing")
-brisbane <- extractAndLabelImages("Brisbane")
-geneva <- extractAndLabelImages("Geneva")
-hongkong <- extractAndLabelImages("HongKong")
-luanda <- extractAndLabelImages("Luanda")
-melbourne <- extractAndLabelImages("Melbourne")
-seoul <- extractAndLabelImages("Seoul")
-singapore <- extractAndLabelImages("Singapore")
-sydney <- extractAndLabelImages("Sydney")
-zurich <- extractAndLabelImages("Zurich")
+cities <- list("Beijing", "Brisbane", "Geneva", "HongKong", "Luanda", "Melbourne", "Seoul", "Singapore", "Sydney", "Zurich")
 
-beijing_train <- splitTrainingAndValidationSets(beijing)[[1]]
-beijing_valid <- splitTrainingAndValidationSets(beijing)[[2]]
-brisbane_train <- splitTrainingAndValidationSets(brisbane)[[1]]
-brisbane_valid <- splitTrainingAndValidationSets(brisbane)[[2]]
-geneva_train <- splitTrainingAndValidationSets(geneva)[[1]]
-geneva_valid <- splitTrainingAndValidationSets(geneva)[[2]]
-hongkong_train <- splitTrainingAndValidationSets(hongkong)[[1]]
-hongkong_valid <- splitTrainingAndValidationSets(hongkong)[[2]]
-luanda_train <- splitTrainingAndValidationSets(luanda)[[1]]
-luanda_valid <- splitTrainingAndValidationSets(luanda)[[2]]
-melbourne_train <- splitTrainingAndValidationSets(melbourne)[[1]]
-melbourne_valid <- splitTrainingAndValidationSets(melbourne)[[2]]
-seoul_train <- splitTrainingAndValidationSets(seoul)[[1]]
-seoul_valid <- splitTrainingAndValidationSets(seoul)[[2]]
-singapore_train <- splitTrainingAndValidationSets(singapore)[[1]]
-singapore_valid <- splitTrainingAndValidationSets(singapore)[[2]]
-sydney_train <- splitTrainingAndValidationSets(sydney)[[1]]
-sydney_valid <- splitTrainingAndValidationSets(sydney)[[2]]
-zurich_train <- splitTrainingAndValidationSets(zurich)[[1]]
-zurich_valid <- splitTrainingAndValidationSets(zurich)[[2]]
+training <- data.frame()
+validation <- data.frame()
 
-training <- as.data.frame(rbind(beijing_train, brisbane_train, geneva_train, hongkong_train, luanda_train, melbourne_train, seoul_train, singapore_train, sydney_train, zurich_train))
-validation <- as.data.frame(rbind(beijing_valid, brisbane_valid, geneva_valid, hongkong_valid, luanda_valid, melbourne_valid, seoul_valid, singapore_valid, sydney_valid, zurich_valid))
-
-rm(beijing)
-rm(brisbane)
-rm(geneva)
-rm(hongkong)
-rm(luanda)
-rm(melbourne)
-rm(seoul)
-rm(singapore)
-rm(sydney)
-rm(zurich)
+for (city in cities) {
+  print(paste("reading", city))
+  df <- extractAndLabelImages(city)
+  tv <- splitTrainingAndValidationSets(df)
+  
+  training <- rbind(training, tv[[1]])
+  validation <- rbind(validation, tv[[2]])
+}
 
 tree <- ctree(city ~ ., data = training)
 save(tree, file = "cities.tree.model")
