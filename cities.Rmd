@@ -16,9 +16,9 @@ I use the ```jpeg``` library to read in the RGB values of each image. The image 
 For each city, its images are split into training and validation sets (30:70). The following is the function definitions for extracting pixels and splitting the images into training and test sets.
 
 ```{r function-definitions}
-install.packages("jpeg")
-install.packages("dplyr")
-install.packages("party")
+install.packages("jpeg", repos = "http://cran.us.r-project.org")
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+install.packages("party", repos = "http://cran.us.r-project.org")
 library(jpeg)
 library(dplyr)
 library(party)
