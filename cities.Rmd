@@ -13,12 +13,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 I use the ```jpeg``` library to read in the RGB values of each image. The image is then divided into different regions. In each region, the RGB value of the centre 4x4 square is taken as a feature.
 
-For each city, its images are split into training and validation sets (80:20).
+For each city, its images are split into training and validation sets (30:70). The following is the function definitions for extracting pixels and splitting the images into training and test sets.
 
 ```{r function-definitions}
-#install.packages("jpeg")
-#install.packages("dplyr")
-#install.packages("party")
+install.packages("jpeg")
+install.packages("dplyr")
+install.packages("party")
 library(jpeg)
 library(dplyr)
 library(party)
@@ -41,12 +41,13 @@ getB <- function(img) {
   getPixelValues(img[,,3])
 }
 
-getImageFeatures <- function(label, img) {
+getImageFeatures <- function(img) {
   r <- getR(img)
   g <- getG(img)
   b <- getB(img)
   df <- data.frame(t(c(r,g,b)))
-  cbind("city" = label, df)
+  
+  df
 }
 
 extractAndLabelImages <- function(label) {
@@ -57,7 +58,8 @@ extractAndLabelImages <- function(label) {
   results <- lapply(filenames, function(f) {
     img <- readJPEG(f)
     
-    imgRgb <- getImageFeatures(label, img)
+    imgRgb <- getImageFeatures(img)
+    imgRgb <- cbind("city" = label, imgRgb)
     
     rbind(accum, imgRgb)
   })
@@ -69,6 +71,8 @@ splitTrainingAndValidationSets <- function(images) {
   list(images[1:3000,], images[3001:10000,])
 }
 ```
+
+Here, images in each city are loaded, and split into training and validation data frames.
 
 ```{r read-images}
 cities <- list("Beijing", "Brisbane", "Geneva", "HongKong", "Luanda", "Melbourne", "Seoul", "Singapore", "Sydney", "Zurich")
@@ -84,13 +88,19 @@ for (city in cities) {
   training <- rbind(training, tv[[1]])
   validation <- rbind(validation, tv[[2]])
 }
+```
 
+Here, I train two models - a simple decision tree and a random forest.
+
+```{r training}
 tree <- ctree(city ~ ., data = training)
 save(tree, file = "cities.tree.model")
 
 forest <- randomForest(city ~ ., data = training)
 save(forest, file = "cities.forest.model")
 ```
+
+The two models are tested using the validation set. The random forest, as expected, out-performs the tree.
 
 ```{r validation}
 predict_cities <- function(method, model, data) {
@@ -105,6 +115,36 @@ predict_cities("decision tree", tree, validation)
 predict_cities("random forest", forest, validation)
 ```
 
+And here's using the random forest to predict the final test set.
+
 ```{r predict}
+test_csv <- read.csv("./synimg/test/data_nostyle.csv")
+
+extractTestImages <- function() {
+  filenames <- test_csv$filepath
+
+  accum <- data.frame()
+  
+  results <- lapply(filenames, function(f) {
+    filepath <- paste("./", f, sep = "")
+
+    img <- readJPEG(filepath)
+
+    imgRgb <- getImageFeatures(img)
+
+    rbind(accum, imgRgb)
+  })
+
+  bind_rows(results)
+}
+
+test_images_pixels <- extractTestImages()
+
+test_csv$predicted <- predict(forest, test_images_pixels)
+
+head(test_csv)
+
+write.csv(test_csv, file = "predicted.csv", quote = FALSE)
 
 ```
+

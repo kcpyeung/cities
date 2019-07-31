@@ -1,3 +1,4 @@
 *.model
+*.csv
 .Rhistory
 
